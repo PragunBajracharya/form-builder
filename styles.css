@@ -28,3 +28,6 @@
     cursor: pointer;
 }
 
+.tab-button.active {
+    @apply text-blue-600 border-blue-600 border-b-white;
+}
