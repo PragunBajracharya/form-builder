@@ -8,9 +8,12 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     let columnCount = {};
     let rowCount = 0
     let formSkeletonJSON = [];
+    let draggedItem = null;
+    let draggedFrom = null;
 
     // Add drag start event to sidebar items
     sidebar.addEventListener('dragstart', async (e) => {
+        draggedFrom = sidebar
         if (e.target.getAttribute('draggable')) {
             e.dataTransfer.setData('text/plain', e.target.getAttribute('data-type'));
         }
@@ -19,13 +22,25 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     // Prevent default to allow drop
     container.addEventListener('dragover', async (e) => {
         e.preventDefault();
+        if (draggedFrom === formArea) {
+            const afterElement = await getDragAfterElement(container, e.clientY);
+            if (afterElement == null) {
+                container.appendChild(draggedItem);
+            } else {
+                container.insertBefore(draggedItem, afterElement);
+            }
+        }
     });
 
     // Handle the drop
     container.addEventListener('drop', async (e) => {
         e.preventDefault();
         const type = e.dataTransfer.getData('text');
-        await processDrop(e, type);
+        if (draggedFrom === sidebar) {
+            await processDrop(e, type);
+        } else if (draggedFrom === formArea) {
+
+        }
     });
 
     document.addEventListener('click', async (e) => {
@@ -77,6 +92,15 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         await removePTag(parentDiv);
         await buildFormSkeletonJSON(targetElement, type, "insert", formElementName);
         await updateTabs();
+    }
+
+    async function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll(".row:not([style*='display: none'])")];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     async function deleteElement(e) {
@@ -184,11 +208,13 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         let parentDiv = null;
         newRowHTML.className = "row w-full p-2 relative";
         newRowHTML.setAttribute("data-row-id", rowCount);
+        newRowHTML.setAttribute("draggable", "true");
         newRowHTML.innerHTML = `
                     <div class="border-2 border-dashed border-gray-300 p-4 rounded-lg flex flex-wrap">
                         <p class="text-gray-500">Drop elements here</p>
                     </div>`;
         newRowHTML.appendChild(deleteButton());
+        newRowHTML.appendChild(reorderButton())
         if (!targetDiv) {
             container.appendChild(newRowHTML);
         } else if (targetDiv.id === "container") {
@@ -197,7 +223,25 @@ document.addEventListener('DOMContentLoaded', async (event) => {
             let parentDiv = targetDiv.querySelector('div');
             parentDiv.appendChild(newRowHTML);
         }
+        await addDragAndDropListeners(newRowHTML);
         return parentDiv;
+    }
+
+    async function addDragAndDropListeners(row) {
+        row.addEventListener("dragstart", function () {
+            draggedItem = this;
+            draggedFrom = formArea
+            setTimeout(() => this.style.display = "none", 0);
+        });
+
+        row.addEventListener("dragend", async function () {
+            setTimeout(async () => {
+                draggedItem.style.display = "block";
+                draggedItem = null;
+                await buildFormSkeletonJSON(row, null, "reorder", null);
+                await updateTabs();
+            }, 0);
+        });
     }
 
     // Function to update column widths
@@ -242,6 +286,13 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         deleteButton.className = "delete"
         deleteButton.innerText = "\u00D7";
         return deleteButton;
+    }
+
+    function reorderButton() {
+        const reorderButton = document.createElement("div");
+        reorderButton.className = "reorder"
+        reorderButton.innerHTML = "&#x2725;";
+        return reorderButton;
     }
 
     async function buildFormSkeletonJSON(targetElement, type, operation = "insert", formElementName = null) {
@@ -308,7 +359,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 }
             }
         } else if (operation === "remove") {
-            console.log(targetElement)
             rowId = parseInt(targetElement?.getAttribute("data-row-id"));
             columnId = parseInt(targetElement?.getAttribute("data-column-id"));
             if (rowId) {
@@ -329,7 +379,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
             } else {
                 rowId = parseInt(targetElement?.closest(".row")?.getAttribute("data-row-id"));
                 columnId = parseInt(targetElement?.closest(".column")?.getAttribute("data-column-id"));
-                console.log(targetElement)
                 formElementName = getFormElementName(targetElement);
                 if (columnId) {
                     formSkeletonJSON = formSkeletonJSON.map(row => {
@@ -362,6 +411,8 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 }
             }
         } else if (operation === "reorder") {
+            let rowIds = [...container.querySelectorAll(".row")].map(row => (parseInt(row.getAttribute("data-row-id"))));
+            formSkeletonJSON = formSkeletonJSON.sort((a, b) => rowIds.indexOf(a.id) - rowIds.indexOf(b.id))
         }
     }
 

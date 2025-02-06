@@ -2,17 +2,17 @@
     position: relative;
 }
 
-.row:before {
+.form-area .row:before {
     content: "Row";
     transform: translate(50%, 50%);
 }
 
-.column:before {
+.form-area .column:before {
     content: "Column";
     transform: translate(30%, 50%);
 }
 
-.row:before, .column:before {
+.form-area .row:before, .column:before {
     position: absolute;
     top: 0;
     left: 0;
@@ -26,6 +26,18 @@
     right: 10px;
     font-size: 20px;
     cursor: pointer;
+}
+
+.reorder {
+    position: absolute;
+    top: 8px;
+    left: -10px;
+    background: #EEE;
+    border-radius: 6px;
+    height: 18px;
+    width: 18px;
+    text-align: center;
+    line-height: 1;
 }
 
 .tab-button.active {
