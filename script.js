@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     const formArea = document.getElementById('form-area');
     const container = document.getElementById('container');
     const previewTab = document.getElementById('preview-tab');
-    const htmlCode = document.getElementById('html-code');
+    const htmlCode = document.getElementById('html-code').querySelector("code");
     const jsonCode = document.getElementById('json-code');
     let columnCount = {};
     let rowCount = 0
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 alert("Please add a row first.")
                 return
             }
-            if (targetDiv.querySelector('input, button, select, textarea')) {
+            if (!targetDiv.querySelector(".column") && targetDiv.querySelector('input, button, select, textarea')) {
                 alert("Please add column in a row without any fields.");
                 return
             }
@@ -99,8 +99,8 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
-            return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
+            return offset < 0 && offset > closest.offset ? {offset, element: child} : closest;
+        }, {offset: Number.NEGATIVE_INFINITY}).element;
     }
 
     async function deleteElement(e) {
@@ -442,10 +442,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     // Function to update tabs
     async function updateTabs() {
         // Update Preview tab
-        // previewTab.appendChild(createHtml(formSkeletonJSON));
-        //
-        // // Update HTML tab
-        // htmlCode.textContent = createHtml(formSkeletonJSON);
+        previewTab.innerHTML = ""
+        previewTab.appendChild(createHtml(formSkeletonJSON));
+
+        // Update HTML tab
+        htmlCode.textContent = createHtml(formSkeletonJSON).outerHTML;
 
         jsonCode.textContent = JSON.stringify(formSkeletonJSON, null, 2);
     }
@@ -465,7 +466,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     });
 
     function createHtml(jsonData) {
-        const container = document.createElement('div');
+        const previewContent = document.createElement('div');
 
         jsonData.forEach((row) => {
             const rowElement = document.createElement('div');
@@ -490,10 +491,9 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 });
             }
 
-            container.appendChild(rowElement);
+            previewContent.appendChild(rowElement);
         });
-
-        return container;
+        return previewContent;
     }
 
     function createFieldElement(field) {
@@ -501,31 +501,129 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
         switch (field.type) {
             case 'text':
-                fieldElement = document.createElement('input');
-                fieldElement.type = 'text';
-                fieldElement.id = field.id;
-                fieldElement.name = field.name;
-                fieldElement.placeholder = field.label;
+                fieldElement = document.createElement('div');
+
+                const textLabel = document.createElement('label');
+                textLabel.htmlFor = field.id;
+                textLabel.textContent = "Text Field";
+
+                const textInput = document.createElement('input');
+                textInput.type = 'text';
+                textInput.id = field.id;
+                textInput.name = field.name;
+                textInput.placeholder = field.label;
+
+                fieldElement.appendChild(textLabel);
+                fieldElement.appendChild(textInput);
                 break;
+
+            case 'number':
+                fieldElement = document.createElement('div');
+
+                const numberLabel = document.createElement('label');
+                numberLabel.htmlFor = field.id;
+                numberLabel.textContent = "Number Field";
+
+                const numberInput = document.createElement('input');
+                numberInput.type = 'number';
+                numberInput.id = field.id;
+                numberInput.name = field.name;
+                numberInput.placeholder = field.label;
+
+                fieldElement.appendChild(numberLabel);
+                fieldElement.appendChild(numberInput);
+                break;
+
             case 'checkbox':
-                fieldElement = document.createElement('input');
-                fieldElement.type = 'checkbox';
-                fieldElement.id = field.id;
-                fieldElement.name = field.name;
+                fieldElement = document.createElement('div');
+
+                const checkboxInput = document.createElement('input');
+                checkboxInput.type = 'checkbox';
+                checkboxInput.id = field.id;
+                checkboxInput.name = field.name;
+                checkboxInput.value = "";
+
                 const checkboxLabel = document.createElement('label');
                 checkboxLabel.htmlFor = field.id;
-                checkboxLabel.textContent = field.label;
-                fieldElement = document.createElement('div');
+                checkboxLabel.textContent = "Checkbox Field";
+
+                fieldElement.appendChild(checkboxInput);
                 fieldElement.appendChild(checkboxLabel);
-                fieldElement.appendChild(fieldElement);
                 break;
+
+            case 'radio':
+                fieldElement = document.createElement('div');
+
+                const radioLabel = document.createElement('label');
+                radioLabel.htmlFor = field.id;
+                radioLabel.textContent = "Radio Button";
+                const radioInput = document.createElement('input');
+                radioInput.type = 'checkbox';
+                radioInput.id = field.id;
+                radioInput.name = field.name;
+                radioInput.value = "";
+                fieldElement.appendChild(radioInput);
+                fieldElement.appendChild(radioLabel);
+                break;
+
+            case 'textarea':
+                fieldElement = document.createElement('div');
+
+                const textareaLabel = document.createElement('label');
+                textareaLabel.htmlFor = field.id;
+                textareaLabel.textContent = "Text Area";
+
+                const textarea = document.createElement('textarea');
+                textarea.id = field.id;
+                textarea.name = field.name;
+                textarea.placeholder = field.label;
+
+                fieldElement.appendChild(textareaLabel);
+                fieldElement.appendChild(textarea);
+                break;
+
+            case 'select':
+                fieldElement = document.createElement('div');
+
+                const selectLabel = document.createElement('label');
+                selectLabel.htmlFor = field.id;
+                selectLabel.textContent = "Select Dropdown";
+
+                const selectInput = document.createElement('select');
+                selectInput.id = field.id;
+                selectInput.name = field.name;
+
+                // Default options
+                const defaultOptions = [
+                    {value: '1', label: 'Option 1'},
+                    {value: '2', label: 'Option 2'},
+                    {value: '3', label: 'Option 3'}
+                ];
+
+                defaultOptions.forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.value;
+                    optionElement.textContent = option.label;
+                    selectInput.appendChild(optionElement);
+                });
+
+                fieldElement.appendChild(selectLabel);
+                fieldElement.appendChild(selectInput);
+                break;
+
+
             case 'submit':
-                fieldElement = document.createElement('button');
-                fieldElement.type = 'submit';
-                fieldElement.id = field.id;
-                fieldElement.name = field.name;
-                fieldElement.textContent = field.label;
+                fieldElement = document.createElement('div');
+
+                const submitButton = document.createElement('button');
+                submitButton.type = 'submit';
+                submitButton.id = field.id;
+                submitButton.name = field.name;
+                submitButton.textContent = field.label;
+
+                fieldElement.appendChild(submitButton);
                 break;
+
             default:
                 fieldElement = document.createElement('p');
                 fieldElement.textContent = `Unknown field type: ${field.type}`;
